@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "trafficdb",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "trafficdb",
+      "Username": "traffic",
+      "Password": "traffic123",
+      "SSLMode": "prefer"
+    }
+  }
+}
