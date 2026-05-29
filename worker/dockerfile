@@ -1,0 +1,13 @@
+FROM prefecthq/prefect:2-latest
+
+WORKDIR /app
+
+# Dépendances Python supplémentaires
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Code source
+COPY src/ ./src/
+
+# Le worker se connecte au serveur Prefect et attend des jobs
+CMD ["prefect", "worker", "start", "--pool", "default-agent-pool"]
