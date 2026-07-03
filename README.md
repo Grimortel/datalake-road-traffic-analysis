@@ -32,11 +32,26 @@ Construire un datalake avec une décomposition en plusieurs zones et des contrai
 docker compose up -d --build
 ```
 
+## Page de démo (`demo.html`)
+
+Un fichier `demo.html` à la racine du projet regroupe tous les liens à lancer pour visualiser le datalake en un clic (endpoints API + interfaces web MinIO / Prefect / pgAdmin).
+
+Une fois `docker compose up` terminé, ouvre-le dans un navigateur :
+
+
+Liens inclus :
+
+- Endpoints API : `/health`, `/stats`, `/raw/forecast`, `/raw/historical`, `/staging/weather_realtime`, `/staging/weather_historical`, `/curated/anomalies`, `/docs`
+- MinIO console → http://localhost:9001 (login : `minioadmin` / `minioadmin123`)
+- Prefect UI → http://localhost:4200
+- pgAdmin → http://localhost:5050
+
 ## Endpoints API Gateway (GET pour chaque zone)
 
 | Endpoint | Zone | Description |
 |----------|------|-------------|
 | `GET /health` | - | Health check |
+| `GET /stats` | - | Métriques de remplissage (buckets + tables) |
 | `GET /raw/forecast` | Raw | Liste les objets bruts forecast (JSON) |
 | `GET /raw/historical` | Raw | Liste les objets bruts historiques (CSV) |
 | `GET /raw/forecast/object?name=...` | Raw | Récupère un objet brut |
@@ -125,6 +140,3 @@ docker compose exec -T api python -m unittest discover -s tests -p 'test_*.py'
 
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour le schéma du flux de données.
 
-## Démonstration
-
-Pour un script de démo prêt à l'emploi, voir [docs/GUIDE_LANCEMENT_SOUTENANCE.md](docs/GUIDE_LANCEMENT_SOUTENANCE.md).
