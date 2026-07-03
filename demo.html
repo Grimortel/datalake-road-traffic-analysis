@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Demo Datalake</title>
+</head>
+<body>
+
+<h1>Projet Datalake Météo</h1>
+
+<hr>
+
+<h2>Endpoints</h2>
+<ul>
+  <li><a href="http://localhost:8000/health" target="_blank">GET /health</a></li>
+  <li><a href="http://localhost:8000/stats" target="_blank">GET /stats</a></li>
+  <li><a href="http://localhost:8000/raw/forecast" target="_blank">GET /raw/forecast</a></li>
+  <li><a href="http://localhost:8000/raw/historical" target="_blank">GET /raw/historical</a></li>
+  <li><a href="http://localhost:8000/staging/weather_realtime" target="_blank">GET /staging/weather_realtime</a></li>
+  <li><a href="http://localhost:8000/staging/weather_historical" target="_blank">GET /staging/weather_historical</a></li>
+  <li><a href="http://localhost:8000/curated/anomalies" target="_blank">GET /curated/anomalies</a></li>
+  <li><a href="http://localhost:8000/curated/anomalies?anomalies_only=true" target="_blank">GET /curated/anomalies?anomalies_only=true</a></li>
+  <li><a href="http://localhost:8000/docs" target="_blank">Docs</a></li>
+</ul>
+
+<hr>
+
+<h2>Interfaces web</h2>
+<ul>
+  <li><a href="http://localhost:9001" target="_blank">MinIO (login: minioadmin / minioadmin123)</a></li>
+  <li><a href="http://localhost:4200" target="_blank">Prefect</a></li>
+  <li><a href="http://localhost:5050" target="_blank">pgAdmin</a></li>
+</ul>
+
+</body>
+</html>

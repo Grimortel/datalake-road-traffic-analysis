@@ -478,6 +478,60 @@ def get_curated_rows(limit: int = 100, anomalies_only: bool = False) -> list[dic
         return [dict(row._mapping) for row in result]
 
 
+# ─── Stats ──────────────────────────────────────────────────────────────────
+
+
+def get_stats() -> dict[str, Any]:
+    """Return metrics on bucket and table fill levels."""
+    settings = get_settings()
+    client = get_minio_client()
+
+    # MinIO: count objects and total size per prefix
+    raw_stats: dict[str, Any] = {}
+    for zone in ("forecast", "historical"):
+        count, total_bytes = 0, 0
+        for obj in client.list_objects(settings.raw_bucket, prefix=f"raw/{zone}/", recursive=True):
+            count += 1
+            total_bytes += obj.size or 0
+        raw_stats[zone] = {"objects": count, "total_bytes": total_bytes}
+
+    staging_parquet: dict[str, Any] = {}
+    for table in ("weather_realtime", "weather_historical"):
+        count, total_bytes = 0, 0
+        for obj in client.list_objects(settings.staging_bucket, prefix=f"staging/{table}/", recursive=True):
+            count += 1
+            total_bytes += obj.size or 0
+        staging_parquet[table] = {"parquet_files": count, "total_bytes": total_bytes}
+
+    # PostgreSQL: row counts per table
+    ensure_schema()
+    db_stats: dict[str, int] = {}
+    with get_engine().begin() as connection:
+        for table in ("weather_realtime", "weather_historical", "weather_curated"):
+            row = connection.execute(text(f"SELECT COUNT(*) FROM {table}")).fetchone()
+            db_stats[table] = row[0] if row else 0
+
+    anomaly_count = 0
+    with get_engine().begin() as connection:
+        row = connection.execute(text("SELECT COUNT(*) FROM weather_curated WHERE is_anomaly = TRUE")).fetchone()
+        anomaly_count = row[0] if row else 0
+
+    return {
+        "raw_bucket": {
+            "bucket": settings.raw_bucket,
+            "zones": raw_stats,
+        },
+        "staging_bucket": {
+            "bucket": settings.staging_bucket,
+            "parquet": staging_parquet,
+        },
+        "database": {
+            "tables": db_stats,
+            "anomalies_detected": anomaly_count,
+        },
+    }
+
+
 # ─── Zone ingestion ─────────────────────────────────────────────────────────
 
 

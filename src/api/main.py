@@ -11,6 +11,7 @@ from src.pipeline.service import (
     get_raw_object_bytes,
     get_raw_objects,
     get_staging_rows,
+    get_stats,
     ingest_all,
 )
 
@@ -74,6 +75,14 @@ def get_curated_anomalies(
 ) -> dict:
     rows = get_curated_rows(limit=100, anomalies_only=anomalies_only)
     return {"filters": {"anomalies_only": anomalies_only}, "rows": rows}
+
+
+@app.get("/stats")
+def stats() -> dict:
+    try:
+        return get_stats()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @app.api_route("/ingest", methods=["GET", "POST"])

@@ -8,7 +8,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from src.api.main import app
-from src.pipeline.service import normalize_forecast_payload, normalize_historical_csv, normalize_historical_payload, parse_timestamp
+from src.pipeline.service import normalize_forecast_payload, normalize_historical_csv, normalize_historical_payload, parse_timestamp, get_stats
 
 
 class PipelineTransformTests(TestCase):
@@ -127,3 +127,20 @@ class ApiSmokeTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["mode"], "sequential")
+
+    @patch("src.api.main.get_stats")
+    def test_stats_route(self, mock_get_stats) -> None:
+        mock_get_stats.return_value = {
+            "raw_bucket": {"bucket": "raw-weather", "zones": {"forecast": {"objects": 2, "total_bytes": 4096}, "historical": {"objects": 1, "total_bytes": 2048}}},
+            "staging_bucket": {"bucket": "staging-weather", "parquet": {"weather_realtime": {"parquet_files": 2, "total_bytes": 8192}, "weather_historical": {"parquet_files": 1, "total_bytes": 4096}}},
+            "database": {"tables": {"weather_realtime": 48, "weather_historical": 720, "weather_curated": 96}, "anomalies_detected": 4},
+        }
+
+        response = self.client.get("/stats")
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("raw_bucket", data)
+        self.assertIn("staging_bucket", data)
+        self.assertIn("database", data)
+        self.assertEqual(data["database"]["anomalies_detected"], 4)
