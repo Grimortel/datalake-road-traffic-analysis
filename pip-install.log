@@ -1,0 +1,69 @@
+Using pip 26.1.2 from /home/grimortel/work/m1/datalake-road-traffic-analysis/.venv/lib64/python3.14/site-packages/pip (python 3.14)
+Collecting fastapi==0.111.0 (from -r requirements.txt (line 2))
+  Obtaining dependency information for fastapi==0.111.0 from https://files.pythonhosted.org/packages/e6/33/de41e554e5a187d583906e10d53bfae5fd6c07e98cbf4fe5262bd37e739a/fastapi-0.111.0-py3-none-any.whl.metadata
+  Using cached fastapi-0.111.0-py3-none-any.whl.metadata (25 kB)
+Collecting uvicorn==0.28.1 (from uvicorn[standard]==0.28.1->-r requirements.txt (line 3))
+  Obtaining dependency information for uvicorn==0.28.1 from https://files.pythonhosted.org/packages/6e/12/57c09286f0293e73343e95427072ec7b700324f858637887c5b7e9c687b7/uvicorn-0.28.1-py3-none-any.whl.metadata
+  Using cached uvicorn-0.28.1-py3-none-any.whl.metadata (6.3 kB)
+Collecting sqlalchemy==2.0.29 (from -r requirements.txt (line 6))
+  Obtaining dependency information for sqlalchemy==2.0.29 from https://files.pythonhosted.org/packages/47/f9/026d1b728906add37801772bced8f49f1289d3bdb377c5a40613f457a8b5/SQLAlchemy-2.0.29-py3-none-any.whl.metadata
+  Using cached SQLAlchemy-2.0.29-py3-none-any.whl.metadata (9.6 kB)
+Collecting psycopg2-binary==2.9.9 (from -r requirements.txt (line 7))
+  Using cached psycopg2-binary-2.9.9.tar.gz (384 kB)
+  Installing build dependencies: started
+  Running command installing build dependencies for psycopg2-binary
+  Using pip 26.1.2 from /home/grimortel/work/m1/datalake-road-traffic-analysis/.venv/lib/python3.14/site-packages/pip (python 3.14)
+  Collecting setuptools>=40.8.0
+    Obtaining dependency information for setuptools>=40.8.0 from https://files.pythonhosted.org/packages/9d/76/f789f7a86709c6b087c5a2f52f911838cad707cc613162401badc665acfe/setuptools-82.0.1-py3-none-any.whl.metadata
+    Using cached setuptools-82.0.1-py3-none-any.whl.metadata (6.5 kB)
+  Using cached setuptools-82.0.1-py3-none-any.whl (1.0 MB)
+  Installing collected packages: setuptools
+  Successfully installed setuptools-82.0.1
+  Installing build dependencies: finished with status 'done'
+  Getting requirements to build wheel: started
+  Running command Getting requirements to build wheel
+  /tmp/pip-build-env-833ug_n5/overlay/lib/python3.14/site-packages/setuptools/dist.py:765: SetuptoolsDeprecationWarning: License classifiers are deprecated.
+  !!
+
+          ********************************************************************************
+          Please consider removing the following classifiers in favor of a SPDX license expression:
+
+          License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)
+
+          See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#license for details.
+          ********************************************************************************
+
+  !!
+    self._finalize_license_expression()
+  running egg_info
+  writing psycopg2_binary.egg-info/PKG-INFO
+  writing dependency_links to psycopg2_binary.egg-info/dependency_links.txt
+  writing top-level names to psycopg2_binary.egg-info/top_level.txt
+
+  Error: pg_config executable not found.
+
+  pg_config is required to build psycopg2 from source.  Please add the directory
+  containing pg_config to the $PATH or specify the full executable path with the
+  option:
+
+      python setup.py build_ext --pg-config /path/to/pg_config build ...
+
+  or with the pg_config option in 'setup.cfg'.
+
+  If you prefer to avoid building psycopg2 from source, please install the PyPI
+  'psycopg2-binary' package instead.
+
+  For further information please check the 'doc/src/install.rst' file (also at
+  <https://www.psycopg.org/docs/install.html>).
+
+  error: subprocess-exited-with-error
+  
+  × Getting requirements to build wheel did not run successfully.
+  │ exit code: 1
+  ╰─> No available output.
+  
+  note: This error originates from a subprocess, and is likely not a problem with pip.
+  full command: /home/grimortel/work/m1/datalake-road-traffic-analysis/.venv/bin/python /home/grimortel/work/m1/datalake-road-traffic-analysis/.venv/lib64/python3.14/site-packages/pip/_vendor/pyproject_hooks/_in_process/_in_process.py get_requires_for_build_wheel /tmp/tmpajm28b16
+  cwd: /tmp/pip-install-0wa8ep9q/psycopg2-binary_34eab314c7194a52a8780b6c9b895d6b
+  Getting requirements to build wheel: finished with status 'error'
+ERROR: Failed to build 'psycopg2-binary' when getting requirements to build wheel

@@ -1,0 +1,20 @@
+FROM prefecthq/prefect:2-latest
+
+
+WORKDIR /app
+
+# Installer dépendances système nécessaires à la construction de wheels
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends \
+		build-essential gcc g++ python3-dev libpq-dev libssl-dev libffi-dev cargo cmake make curl && \
+	rm -rf /var/lib/apt/lists/*
+
+# Dépendances Python supplémentaires
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Code source
+COPY src/ ./src/
+
+# Le worker exécute le flow Prefect localement et le planifie toutes les 6 minutes
+CMD ["python", "-m", "src.worker"]
