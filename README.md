@@ -77,18 +77,8 @@ L'option `--mock-on-error` génère un JSON mock compatible si l'API est inacces
 
 ### Historical — Source par fichier (CSV)
 
-Le script accepte un fichier CSV local, une URL distante, ou un mode mock :
 
 ```bash
-# Depuis un fichier local
-docker compose exec -T api python /app/src/ingestion/fetch_historical_to_minio.py \
-  --path /app/data/historical_weather.csv
-
-# Depuis une URL
-docker compose exec -T api python /app/src/ingestion/fetch_historical_to_minio.py \
-  --url https://bulk.open-meteo.com/export.csv
-
-# Mode mock (génère un CSV de 720 lignes)
 docker compose exec -T api python /app/src/ingestion/fetch_historical_to_minio.py --mock
 ```
 
