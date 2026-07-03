@@ -17,6 +17,7 @@ requests==2.31.0
 
 # Orchestration
 prefect==2.19.3
+griffe<1.0.0
 
 # Utilitaires
 python-dotenv==1.0.1

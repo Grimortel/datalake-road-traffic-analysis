@@ -1,13 +1,12 @@
 {
   "Servers": {
     "1": {
-      "Name": "trafficdb",
+      "Name": "Weather Datalake",
       "Group": "Servers",
       "Host": "postgres",
       "Port": 5432,
-      "MaintenanceDB": "trafficdb",
-      "Username": "traffic",
-      "Password": "traffic123",
+      "MaintenanceDB": "weatherdb",
+      "Username": "weather",
       "SSLMode": "prefer"
     }
   }

@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
 
   # ─────────────────────────────────────────
@@ -7,19 +5,19 @@ services:
   # ─────────────────────────────────────────
   postgres:
     image: postgres:15
-    container_name: traffic_postgres
+    container_name: weather_postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: traffic
-      POSTGRES_PASSWORD: traffic123
-      POSTGRES_DB: trafficdb
+      POSTGRES_USER: weather
+      POSTGRES_PASSWORD: weather123
+      POSTGRES_DB: weatherdb
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U traffic -d trafficdb"]
+      test: ["CMD-SHELL", "pg_isready -U weather -d weatherdb"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,15 +27,15 @@ services:
   # ─────────────────────────────────────────
   minio:
     image: minio/minio:latest
-    container_name: traffic_minio
+    container_name: weather_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
     ports:
-      - "9000:9000"   # API S3
-      - "9001:9001"   # Console web
+      - "9000:9000"
+      - "9001:9001"
     volumes:
       - minio_data:/data
     healthcheck:
@@ -47,19 +45,20 @@ services:
       retries: 5
 
   # ─────────────────────────────────────────
-  # 3. MinIO Init — crée le bucket au démarrage
+  # 3. MinIO Init — crée les buckets au démarrage
   # ─────────────────────────────────────────
   minio-init:
     image: minio/mc:latest
-    container_name: traffic_minio_init
+    container_name: weather_minio_init
     depends_on:
       minio:
         condition: service_healthy
     entrypoint: >
       /bin/sh -c "
         mc alias set local http://minio:9000 minioadmin minioadmin123;
-        mc mb --ignore-existing local/raw-traffic;
-        echo 'Bucket raw-traffic créé.';
+        mc mb --ignore-existing local/raw-weather;
+        mc mb --ignore-existing local/staging-weather;
+        echo 'Buckets raw-weather et staging-weather créés.';
       "
 
   # ─────────────────────────────────────────
@@ -68,15 +67,14 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile.api
-    container_name: traffic_api
+      dockerfile: api/dockerfile
+    container_name: weather_api
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql://traffic:traffic123@postgres:5432/trafficdb
+      DATABASE_URL: postgresql://weather:weather123@postgres:5432/weatherdb
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
-      TOMTOM_API_KEY: ${TOMTOM_API_KEY}
     ports:
       - "8000:8000"
     volumes:
@@ -97,12 +95,12 @@ services:
   # ─────────────────────────────────────────
   prefect-server:
     image: prefecthq/prefect:2-latest
-    container_name: traffic_prefect_server
+    container_name: weather_prefect_server
     restart: unless-stopped
     command: prefect server start --host 0.0.0.0
     environment:
       PREFECT_SERVER_API_HOST: 0.0.0.0
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://traffic:traffic123@postgres:5432/trafficdb
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://weather:weather123@postgres:5432/weatherdb
     ports:
       - "4200:4200"
     depends_on:
@@ -115,16 +113,15 @@ services:
   prefect-worker:
     build:
       context: .
-      dockerfile: Dockerfile.worker
-    container_name: traffic_prefect_worker
+      dockerfile: worker/dockerfile
+    container_name: weather_prefect_worker
     restart: unless-stopped
     environment:
       PREFECT_API_URL: http://prefect-server:4200/api
-      DATABASE_URL: postgresql://traffic:traffic123@postgres:5432/trafficdb
+      DATABASE_URL: postgresql://weather:weather123@postgres:5432/weatherdb
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin123
-      TOMTOM_API_KEY: ${TOMTOM_API_KEY}
     volumes:
       - ./src:/app/src
     depends_on:
@@ -137,10 +134,10 @@ services:
   # ─────────────────────────────────────────
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: traffic_pgadmin
+    container_name: weather_pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@traffic.com
+      PGADMIN_DEFAULT_EMAIL: admin@weather.com
       PGADMIN_DEFAULT_PASSWORD: admin123
       PGADMIN_CONFIG_SERVER_MODE: "False"
     ports:

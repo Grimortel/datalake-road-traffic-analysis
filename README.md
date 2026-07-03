@@ -1,148 +1,130 @@
-# Prompt — Projet Datalake : Analyse du trafic routier & prédiction de congestion
+# Datalake Weather Analysis
 
-## Contexte général
+Projet de datalake de bout en bout pour l'analyse météo et la détection d'anomalies climatiques.
 
-Tu es assistant technique sur un projet étudiant de niveau ING2 (école d'ingénieurs, 4e année). Le projet s'intitule **"Datalake & Data Integration — Analyse du trafic routier & prédiction de congestion"**. L'objectif est de construire un datalake complet, de l'ingestion brute jusqu'aux données enrichies, avec une API gateway exposant chaque zone, une orchestration automatisée, et un mode avancé avec parallélisme mesuré.
+## Objectif
 
----
+Construire un datalake avec une décomposition en plusieurs zones et des contraintes techniques :
 
-## Sources de données (primaires uniquement)
+- **Zone Raw** : stockage objet MinIO (blob S3-compatible)
+- **Zone Staging** : PostgreSQL + snapshots Parquet
+- **Zone Curated** : PostgreSQL (scores d'anomalie z-score)
 
-| Type | Source | Détail |
-|------|---------|--------|
-| API temps réel | **TomTom Traffic Flow API** | Endpoint `/flowSegmentData` — vitesse courante, vitesse free-flow, confidence par tronçon. Free tier : 2 500 req/jour. Clé API requise (developer.tomtom.com). |
-| Fichier open data | **Zenodo — Monash Traffic Hourly** | DOI `10.5281/zenodo.4656132` — 862 séries temporelles horaires, taux d'occupation des autoroutes de la baie de San Francisco (2015-2016), format CSV. |
+## Sources de données
 
----
+| Source | Type | Description |
+|--------|------|-------------|
+| Open-Meteo Forecast API | **API** (appel HTTP temps réel) | Prévisions horaires, 100% gratuite, sans clé |
+| Fichier CSV historique | **Fichier** (import local ou téléchargement) | Données historiques au format CSV |
 
-## Architecture du datalake — 3 zones
+## Architecture
 
-### Zone Raw
-- Stockage **BLOB** via **MinIO** (compatible S3)
-- JSON brut TomTom horodaté : `raw/tomtom/YYYY-MM-DD/HH-MM.json`
-- CSV Zenodo brut : `raw/zenodo/traffic_hourly.csv`
-- Aucune transformation — données telles quelles
+- **Open-Meteo Forecast API** (`/v1/forecast`) — source par API
+- **Fichier CSV** (export Open-Meteo bulk, ou tout dataset météo CSV) — source par fichier
+- **MinIO** pour la zone raw (stockage blob S3-compatible)
+- **PostgreSQL** pour staging et curated
+- **Parquet** pour les snapshots intermédiaires
+- **Prefect** pour l'orchestration
 
-### Zone Staging
-- Stockage **PostgreSQL** + fichiers **Parquet** (via pyarrow)
-- Normalisation TomTom : extraction de `speed`, `freeFlowSpeed`, `confidence`, `segment_id`, `timestamp`
-- Normalisation Zenodo : reshape en `(timestamp, sensor_id, occupancy)`, dédoublonnage
-- Tables : `traffic_realtime`, `traffic_historical`
+## Démarrage rapide
 
-### Zone Curated
-- Stockage **PostgreSQL** (vue matérialisée)
-- Calcul du **congestion score** par tronçon et par heure : `score = speed / freeFlowSpeed × 100`
-- Catégories : `fluide (>80)` / `ralenti (40-80)` / `saturé (<40)`
-- Jointure temps réel × baseline historique Zenodo → détection d'anomalies
-- Table : `traffic_curated(segment_id, hour, score, category, baseline, delta)`
-
----
-
-## Stack technique
-
-| Couche | Outil |
-|--------|-------|
-| Langage | Python 3.11+ |
-| Stockage objet (raw) | MinIO (S3-compatible) |
-| Base de données | PostgreSQL |
-| Sérialisation | Parquet (pyarrow), JSON |
-| ORM / requêtes | SQLAlchemy |
-| API gateway | FastAPI |
-| Orchestration | Prefect (server Docker + agent local) |
-| Conteneurisation | Docker + Docker Compose |
-| Parallelisme | `concurrent.futures.ThreadPoolExecutor` |
-| Gestion dépendances | pip + requirements.txt + venv |
-
----
-
-## Endpoints API (FastAPI)
-
-### GET — lecture par zone
-| Endpoint | Description |
-|----------|-------------|
-| `GET /raw/{zone}` | Liste des objets MinIO (nom, taille, date) pour la zone `tomtom` ou `zenodo` |
-| `GET /staging/{table}` | 100 dernières lignes de `traffic_realtime` ou `traffic_historical`. Filtres : `?date=&segment=` |
-| `GET /curated/congestion` | Scores de congestion par segment. Filtres : `?hour=&category=&segment=` |
-
-### POST — mode avancé
-| Endpoint | Description |
-|----------|-------------|
-| `POST /ingest` | Déclenche la pipeline complète en séquentiel, retourne le temps total en ms |
-| `POST /ingest-fast` | Pipeline parallèle via `ThreadPoolExecutor` sur N tronçons simultanés, retourne le temps + speedup vs séquentiel |
-
----
-
-## Orchestration Prefect
-
-Pipeline schedulée toutes les **6 minutes** :
+```bash
+docker compose up -d --build
 ```
-fetch_tomtom → store_raw (MinIO) → normalize → store_staging (PostgreSQL) → compute_curated
+
+## Endpoints API Gateway (GET pour chaque zone)
+
+| Endpoint | Zone | Description |
+|----------|------|-------------|
+| `GET /health` | - | Health check |
+| `GET /raw/forecast` | Raw | Liste les objets bruts forecast (JSON) |
+| `GET /raw/historical` | Raw | Liste les objets bruts historiques (CSV) |
+| `GET /raw/forecast/object?name=...` | Raw | Récupère un objet brut |
+| `GET /raw/historical/object?name=...` | Raw | Récupère un objet brut |
+| `GET /staging/weather_realtime` | Staging | Données normalisées temps réel |
+| `GET /staging/weather_historical` | Staging | Données normalisées historiques |
+| `GET /curated/anomalies` | Curated | Anomalies détectées (z-score) |
+| `POST /ingest` | Pipeline | Ingestion séquentielle complète |
+| `POST /ingest-fast` | Pipeline | Ingestion parallèle |
+
+## Ingestion raw
+
+### Forecast — Source par API
+
+Le script interroge l'API Open-Meteo Forecast et sauvegarde le JSON brut dans MinIO.
+
+```bash
+docker compose exec -T api python /app/src/ingestion/fetch_forecast_to_minio.py \
+  --latitude 48.8566 --longitude 2.3522 --mock-on-error
 ```
-- Retry ×3 sur les appels TomTom
-- Logs persistants Prefect Server
-- Déployé via Docker Compose avec Prefect Server + agent local
 
----
+L'option `--mock-on-error` génère un JSON mock compatible si l'API est inaccessible.
 
-## Todo — phases de développement
+### Historical — Source par fichier (CSV)
 
-Les phases sont à réaliser dans l'ordre. Coche mentalement les tâches terminées pour savoir où en est le projet.
+Le script accepte un fichier CSV local, une URL distante, ou un mode mock :
 
-### Phase 0 — Setup & environnement
-- [ ] Créer le repo GitHub (structure : `/src`, `/docs`, `/notebooks`, README, .gitignore)
-- [ ] Environnement Python : venv, requirements.txt (requests, pandas, pyarrow, fastapi, prefect, sqlalchemy, minio)
-- [ ] Docker Compose : services MinIO, PostgreSQL, FastAPI, Prefect Server
-- [ ] Créer compte TomTom Developer, récupérer clé API, tester `/flowSegmentData` sur un tronçon
-- [ ] Télécharger le dataset Zenodo (DOI 10.5281/zenodo.4656132)
+```bash
+# Depuis un fichier local
+docker compose exec -T api python /app/src/ingestion/fetch_historical_to_minio.py \
+  --path /app/data/historical_weather.csv
 
-### Phase 1 — Zone Raw
-- [ ] Configurer MinIO : bucket `raw-traffic/`, vérifier accès S3
-- [ ] Script d'ingestion TomTom → sauvegarde JSON horodaté dans MinIO
-- [ ] Script d'upload CSV Zenodo → MinIO
-- [ ] Endpoint `GET /raw/{zone}`
+# Depuis une URL
+docker compose exec -T api python /app/src/ingestion/fetch_historical_to_minio.py \
+  --url https://bulk.open-meteo.com/export.csv
 
-### Phase 2 — Zone Staging
-- [ ] Normalisation JSON TomTom → Parquet + insertion PostgreSQL (`traffic_realtime`)
-- [ ] Normalisation CSV Zenodo → Parquet + insertion PostgreSQL (`traffic_historical`)
-- [ ] Endpoint `GET /staging/{table}`
+# Mode mock (génère un CSV de 720 lignes)
+docker compose exec -T api python /app/src/ingestion/fetch_historical_to_minio.py --mock
+```
 
-### Phase 3 — Zone Curated
-- [ ] Calcul congestion score (speed / freeFlowSpeed × 100) + catégorisation
-- [ ] Jointure temps réel × baseline historique
-- [ ] Vue matérialisée `traffic_curated` dans PostgreSQL
-- [ ] Endpoint `GET /curated/congestion`
+## Pipeline
 
-### Phase 4 — Orchestration Prefect
-- [ ] Installer Prefect Server (Docker), créer workspace + agent local
-- [ ] Flow Prefect complet avec schedule 6 min
-- [ ] Gestion erreurs, retry ×3, alertes sur échec
+1. `raw/forecast` (JSON) et `raw/historical` (CSV) sont listés depuis MinIO
+2. Les objets sont normalisés (température, humidité, vent, précipitations)
+3. Les lignes sont insérées dans `weather_realtime` et `weather_historical`
+4. Les données curated sont recalculées dans `weather_curated` (z-score vs moyenne historique)
+5. Les snapshots Parquet sont écrits dans la zone staging MinIO
 
-### Phase 5 — Mode avancé (endpoints POST)
-- [ ] `POST /ingest` séquentiel avec mesure du temps
-- [ ] `POST /ingest-fast` parallèle avec `ThreadPoolExecutor`, mesure speedup
-- [ ] Benchmark sur 10/25/50 tronçons, graphe comparatif
+Le mode séquentiel et le mode parallèle sont exposés via l'API :
 
-### Phase 6 — Rapport & documentation
-- [ ] Schéma d'architecture (zones + flux) pour le README
-- [ ] README complet : installation Docker Compose, exemples curl
-- [ ] Rapport technique PDF : choix techniques justifiés + résultats benchmark
+```bash
+curl -X POST http://localhost:8000/ingest
+curl -X POST http://localhost:8000/ingest-fast
+```
 
----
+## Score d'anomalie (curated)
 
-## Consignes importantes
+Pour chaque point géographique, on calcule l'écart entre la valeur courante et la moyenne historique sur la même heure/mois, normalisé en z-score. Un score supérieur à 2 signale une anomalie.
 
-- Ne jamais transformer les données en zone Raw — stockage brut uniquement
-- Le mode avancé doit **mesurer et retourner** le temps de traitement dans la réponse API
-- Le rapport final est rendu sur le **repo GitHub** (rapport technique + code)
-- Chaque zone doit avoir **au moins un endpoint GET** accessible
-- Utiliser **Prefect** (pas Airflow ni autre) pour l'orchestration
+## Contraintes techniques respectées
 
----
+| Contrainte | Solution |
+|------------|----------|
+| Zone Raw : blob/elastic | MinIO (stockage objet S3-compatible) |
+| Zone Staging : libre | PostgreSQL + Parquet |
+| Zone Curated : libre | PostgreSQL |
+| Orchestration : airflow/prefect/kubeflow | Prefect |
+| Endpoints GET par zone | API FastAPI avec GET /raw, /staging, /curated |
+| Source par API | Open-Meteo Forecast (appel HTTP) |
+| Source par fichier | CSV historique (import fichier) |
 
-## Comment utiliser ce prompt
+## Notes
 
-Quand tu me poses une question ou me demandes de générer du code, réfère-toi à ce contexte pour :
-1. Utiliser les bonnes technologies (pas d'Airflow, pas d'autre ORM que SQLAlchemy, etc.)
-2. Respecter le nommage des tables, buckets et endpoints définis ci-dessus
-3. Situer la tâche dans la bonne phase et vérifier que les phases précédentes sont supposées terminées
-4. Adapter le niveau de détail à un projet étudiant ING2 documenté sur GitHub
+- Le projet fonctionne **entièrement sans clé API** grâce à Open-Meteo (licence CC BY 4.0).
+- Les tables PostgreSQL sont idempotentes via des clés uniques `(timestamp, latitude, longitude)`.
+- Le worker Prefect exécute le flow localement et le planifie toutes les 6 minutes.
+- Open-Meteo couvre le monde entier — il suffit de changer les coordonnées.
+
+## Validation
+
+```bash
+docker compose exec -T api python -m unittest discover -s tests -p 'test_*.py'
+```
+
+## Architecture détaillée
+
+Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour le schéma du flux de données.
+
+## Démonstration
+
+Pour un script de démo prêt à l'emploi, voir [docs/GUIDE_LANCEMENT_SOUTENANCE.md](docs/GUIDE_LANCEMENT_SOUTENANCE.md).
