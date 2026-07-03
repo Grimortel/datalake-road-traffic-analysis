@@ -130,12 +130,6 @@ Pour chaque point géographique, on calcule l'écart entre la valeur courante et
 - Le worker Prefect exécute le flow localement et le planifie toutes les 6 minutes.
 - Open-Meteo couvre le monde entier — il suffit de changer les coordonnées.
 
-## Validation
-
-```bash
-docker compose exec -T api python -m unittest discover -s tests -p 'test_*.py'
-```
-
 ## Architecture détaillée
 
 Voir [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) pour le schéma du flux de données.
